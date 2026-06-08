@@ -1,0 +1,54 @@
+┌─────────────────────────────────────────────────────┐
+│                   SYSTEM ARCHITECTURE               │
+├─────────────────────────────────────────────────────┤
+│  Vue3 + Naive UI (Frontend)                         │
+│  ├── Document Number Generator UI                   │
+│  ├── Format Builder (Drag & Drop)                   │
+│  ├── History & Analytics                            │
+│  └── Settings Management                            │
+├─────────────────────────────────────────────────────┤
+│  Django REST Framework (Backend)                    │
+│  ├── Format Engine (pluggable segments)             │
+│  ├── Sequence Manager (atomic counters)             │
+│  ├── Validation Layer                               │
+│  └── Audit Trail                                    │
+├─────────────────────────────────────────────────────┤
+│  PostgreSQL + Redis                                 │
+│  ├── Format definitions & history                   │
+│  └── Distributed locks & caching                    │
+└─────────────────────────────────────────────────────┘
+
+docnumber/
+├── config/
+│   ├── settings/
+│   │   ├── base.py
+│   │   ├── development.py
+│   │   └── production.py
+│   ├── urls.py
+│   └── wsgi.py
+├── apps/
+│   ├── core/
+│   │   ├── models.py
+│   │   └── exceptions.py
+│   ├── formats/
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   └── engine/
+│   │       ├── __init__.py
+│   │       ├── segments.py
+│   │       ├── parser.py
+│   │       └── generator.py
+│   └── documents/
+│       ├── models.py
+│       ├── serializers.py
+│       ├── views.py
+│       └── urls.py
+├── requirements/
+│   ├── base.txt
+│   ├── development.txt
+│   └── production.txt
+└── docker/
+    ├── Dockerfile
+    └── docker-compose.yml

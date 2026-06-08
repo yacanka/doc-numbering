@@ -1,0 +1,40 @@
+// src/api/documents.ts
+import { apiClient } from './client'
+import type {
+  GeneratedDocument,
+  ApiResponse,
+  PaginatedResponse,
+  DocumentStats,
+} from '@/types'
+
+export interface DocumentFilters {
+  format?: string
+  status?: string
+  search?: string
+  date_from?: string
+  date_to?: string
+  page?: number
+  page_size?: number
+}
+
+export const documentsApi = {
+  getDocuments: (filters?: DocumentFilters) =>
+    apiClient.get<PaginatedResponse<GeneratedDocument>>('/documents/', {
+      params: filters,
+    }),
+
+  getDocument: (id: string) =>
+    apiClient.get<ApiResponse<GeneratedDocument>>(`/documents/${id}/`),
+
+  cancelDocument: (id: string, reason?: string) =>
+    apiClient.post(`/documents/${id}/cancel/`, { reason }),
+
+  markUsed: (id: string) =>
+    apiClient.post(`/documents/${id}/mark-used/`),
+
+  validateNumber: (number: string) =>
+    apiClient.get<ApiResponse<any>>(`/documents/validate/${number}/`),
+
+  getStats: () =>
+    apiClient.get<ApiResponse<DocumentStats>>('/documents/stats/'),
+}

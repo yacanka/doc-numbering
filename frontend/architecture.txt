@@ -1,0 +1,46 @@
+frontend/
+├── src/
+│   ├── api/
+│   │   ├── client.ts
+│   │   ├── formats.ts
+│   │   ├── documents.ts
+│   │   └── auth.ts
+│   ├── stores/
+│   │   ├── auth.ts
+│   │   ├── formats.ts
+│   │   └── documents.ts
+│   ├── composables/
+│   │   ├── useFormats.ts
+│   │   ├── useDocuments.ts
+│   │   └── useNotification.ts
+│   ├── views/
+│   │   ├── DashboardView.vue
+│   │   ├── FormatsView.vue
+│   │   ├── FormatDetailView.vue
+│   │   ├── FormatBuilderView.vue
+│   │   ├── DocumentsView.vue
+│   │   └── SettingsView.vue
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── AppLayout.vue
+│   │   │   ├── AppSidebar.vue
+│   │   │   └── AppHeader.vue
+│   │   ├── format/
+│   │   │   ├── FormatCard.vue
+│   │   │   ├── FormatBuilder.vue
+│   │   │   ├── SegmentPalette.vue
+│   │   │   ├── SegmentEditor.vue
+│   │   │   └── FormatPreview.vue
+│   │   ├── document/
+│   │   │   ├── DocumentTable.vue
+│   │   │   ├── GenerateModal.vue
+│   │   │   └── DocumentDetail.vue
+│   │   └── common/
+│   │       ├── StatusBadge.vue
+│   │       ├── CopyButton.vue
+│   │       └── EmptyState.vue
+│   ├── router/
+│   │   └── index.ts
+│   ├── types/
+│   │   └── index.ts
+│   └── main.ts

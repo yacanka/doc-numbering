@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
-COPY requirements/production.txt .
-RUN pip install --upgrade pip && pip install -r production.txt
+COPY requirements/ ./requirements/
+RUN pip install --upgrade pip && pip install -r requirements/production.txt
 
 # Copy project
 COPY . .

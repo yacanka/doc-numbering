@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { formatsApi } from '@/api/formats'
-import type { DocumentFormat, FormatCategory, SegmentTypeInfo } from '@/types'
+import type { ApiResponse, DocumentFormat, FormatCategory, SegmentTypeInfo } from '@/types'
 
 export const useFormatsStore = defineStore('formats', () => {
   const formats = ref<DocumentFormat[]>([])
@@ -32,10 +32,20 @@ export const useFormatsStore = defineStore('formats', () => {
     }
   }
 
-  async function fetchFormat(id: string) {
+  /** Fetch a single format and normalize raw or wrapped API payloads. */
+  async function fetchFormat(id: string): Promise<DocumentFormat> {
     const response = await formatsApi.getFormat(id)
-    currentFormat.value = response.data.data
+    currentFormat.value = unwrapApiData(response.data)
     return currentFormat.value
+  }
+
+  function unwrapApiData<T>(payload: ApiResponse<T> | T): T {
+    if (isApiResponse(payload)) return payload.data
+    return payload
+  }
+
+  function isApiResponse<T>(payload: ApiResponse<T> | T): payload is ApiResponse<T> {
+    return Boolean(payload && typeof payload === 'object' && 'success' in payload && 'data' in payload)
   }
 
   async function fetchCategories() {

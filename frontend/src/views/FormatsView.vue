@@ -73,8 +73,9 @@ function getStatusTag(status: string) {
 }
 
 async function openGenerate(format: DocumentFormat) {
-  selectedFormat.value = format
   generateModalLoading.value = true
+  selectedFormat.value = format
+
   try {
     selectedFormat.value = await store.fetchFormat(format.id)
     showGenerateModal.value = true
@@ -83,6 +84,14 @@ async function openGenerate(format: DocumentFormat) {
   } finally {
     generateModalLoading.value = false
   }
+}
+
+function closeGenerateModal(value: boolean) {
+  showGenerateModal.value = value
+}
+
+async function handleGenerated() {
+  await store.fetchFormats()
 }
 
 function getFormatActions(format: DocumentFormat) {
@@ -308,9 +317,11 @@ async function handleFormatAction(key: string, format: DocumentFormat) {
 
     <!-- Generate Modal -->
     <generate-modal
-      v-if="showGenerateModal && selectedFormat"
+      v-if="selectedFormat"
       :format="selectedFormat"
-      v-model:show="showGenerateModal"
+      :show="showGenerateModal"
+      @update:show="closeGenerateModal"
+      @generated="handleGenerated"
     />
   </div>
 </template>

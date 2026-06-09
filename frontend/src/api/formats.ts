@@ -44,7 +44,9 @@ export const formatsApi = {
     }),
 
   getFormat: (id: string) =>
-    apiClient.get<ApiResponse<DocumentFormat>>(`/formats/${id}/`),
+    apiClient.get<ApiResponse<DocumentFormat> | DocumentFormat>(
+      `/formats/${id}/`
+    ),
 
   createFormat: (data: Partial<DocumentFormat>) =>
     apiClient.post<ApiResponse<DocumentFormat>>('/formats/', data),

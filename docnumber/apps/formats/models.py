@@ -87,6 +87,10 @@ class DocumentFormat(SoftDeleteModel):
 
     @property
     def total_generated(self):
+        """Return generated document count without extra queries when annotated."""
+        cached_count = getattr(self, '_total_generated', None)
+        if cached_count is not None:
+            return cached_count
         return self.generated_documents.count()
 
     @property

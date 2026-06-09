@@ -13,7 +13,7 @@ import { useFormatsStore } from '@/stores/formats'
 import SegmentPalette from '@/components/format/SegmentPalette.vue'
 import SegmentEditor from '@/components/format/SegmentEditor.vue'
 import FormatPreview from '@/components/format/FormatPreview.vue'
-import type { SegmentConfig, DocumentFormat, ResetPeriod, FormatStatus } from '@/types'
+import type { SegmentConfig, DocumentFormat, ResetPeriod, FormatStatus, SegmentType } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -474,8 +474,10 @@ function handleBack() {
 </template>
 
 <script lang="ts">
-function getSegmentTagType(type: string) {
-  const types: Record<string, string> = {
+type TagType = 'info' | 'success' | 'warning' | 'error' | 'default' | 'primary'
+
+function getSegmentTagType(type: SegmentType): TagType {
+  const types: Record<SegmentType, TagType> = {
     static: 'default',
     date: 'info',
     sequence: 'success',

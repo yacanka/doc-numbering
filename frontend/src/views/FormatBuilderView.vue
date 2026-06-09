@@ -4,9 +4,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NCard, NSpace, NGrid, NGi, NButton, NInput, NForm,
-  NFormItem, NSelect, NSwitch, NTag, NText, NDivider,
-  NModal, NIcon, NSpin, NAlert, NInputNumber,
-  useMessage, useDialog,
+  NFormItem, NSelect, NTag, NText, NDivider, NModal,
+  NIcon, NSpin, NAlert, NInputNumber, useMessage,
 } from 'naive-ui'
 import { SaveOutline, PlayOutline, ArrowBackOutline, CopyOutline } from '@vicons/ionicons5'
 import { useFormatsStore } from '@/stores/formats'
@@ -18,36 +17,19 @@ import type { SegmentConfig, DocumentFormat, ResetPeriod, FormatStatus, SegmentT
 const router = useRouter()
 const route = useRoute()
 const message = useMessage()
-const dialog = useDialog()
 const store = useFormatsStore()
 
-const isEdit = computed(() => !!route.params.id)
+const isEdit = computed(() => Boolean(route.params.id))
 const loading = ref(false)
 const saving = ref(false)
 const generating = ref(false)
 const generatedNumber = ref('')
-
-// Form state
 const formRef = ref()
-const form = ref<Partial<DocumentFormat>>({
-  code: '',
-  name: '',
-  description: '',
-  status: 'draft' as FormatStatus,
-  category: null,
-  segments_config: [],
-  sequence_reset_period: 'never' as ResetPeriod,
-  sequence_start: 1,
-  sequence_step: 1,
-  validation_regex: '',
-  tags: [],
-})
-
+const form = ref<Partial<DocumentFormat>>(createEmptyFormat())
 const segments = ref<SegmentConfig[]>([])
 const editingSegmentIndex = ref<number | null>(null)
 const showSegmentEditor = ref(false)
 
-// Options
 const statusOptions = [
   { label: 'Taslak', value: 'draft' },
   { label: 'Aktif', value: 'active' },
@@ -64,10 +46,7 @@ const resetPeriodOptions = [
 ]
 
 const categoryOptions = computed(() =>
-  store.categories.map((c) => ({
-    label: c.name,
-    value: c.id,
-  }))
+  store.categories.map((category) => ({ label: category.name, value: category.id }))
 )
 
 const formRules = {
@@ -79,28 +58,82 @@ const formRules = {
   name: [{ required: true, message: 'İsim gereklidir' }],
 }
 
-// Load data
-onMounted(async () => {
-  await Promise.all([
-    store.fetchCategories(),
-    store.fetchSegmentTypes(),
-  ])
+onMounted(loadReferenceData)
 
-  if (isEdit.value) {
-    loading.value = true
-    try {
-      const fmt = await store.fetchFormat(route.params.id as string)
-      form.value = { ...fmt }
-      segments.value = [...(fmt.segments_config || [])]
-    } finally {
-      loading.value = false
-    }
+watch(
+  () => route.params.id,
+  () => loadFormat(),
+  { immediate: true }
+)
+
+function createEmptyFormat(): Partial<DocumentFormat> {
+  return {
+    code: '',
+    name: '',
+    description: '',
+    status: 'draft' as FormatStatus,
+    category: null,
+    segments_config: [],
+    sequence_reset_period: 'never' as ResetPeriod,
+    sequence_start: 1,
+    sequence_step: 1,
+    validation_regex: '',
+    tags: [],
   }
-})
+}
 
-// Segment management
+async function loadReferenceData() {
+  await Promise.all([store.fetchCategories(), store.fetchSegmentTypes()])
+}
+
+async function loadFormat() {
+  generatedNumber.value = ''
+  closeSegmentEditor()
+
+  if (!isEdit.value) {
+    resetBuilder()
+    return
+  }
+
+  loading.value = true
+  try {
+    const loadedFormat = await store.fetchFormat(route.params.id as string)
+    applyLoadedFormat(loadedFormat)
+  } catch (err: any) {
+    message.error(err.response?.data?.error?.message || 'Format detayları alınamadı')
+  } finally {
+    loading.value = false
+  }
+}
+
+function applyLoadedFormat(loadedFormat: DocumentFormat) {
+  form.value = { ...createEmptyFormat(), ...loadedFormat }
+  segments.value = sortSegments(loadedFormat.segments_config || [])
+}
+
+function resetBuilder() {
+  form.value = createEmptyFormat()
+  segments.value = []
+}
+
+function sortSegments(items: SegmentConfig[]): SegmentConfig[] {
+  return items
+    .map((segment) => ({ ...segment, config: { ...(segment.config || {}) } }))
+    .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+    .map((segment, index) => ({ ...segment, order: index }))
+}
+
 function addSegment(segmentType: string) {
-  const defaultConfigs: Record<string, any> = {
+  segments.value.push({
+    type: segmentType as SegmentType,
+    config: createDefaultSegmentConfig(segmentType),
+    order: segments.value.length,
+    label: store.segmentTypes.find((segment) => segment.type === segmentType)?.label || segmentType,
+  })
+}
+
+function createDefaultSegmentConfig(segmentType: string): Record<string, any> {
+  const defaultConfigs: Record<string, Record<string, any>> = {
     static: { value: 'DOC' },
     date: { format: 'YYYY' },
     sequence: { padding: 4, start: 1, step: 1 },
@@ -110,15 +143,7 @@ function addSegment(segmentType: string) {
     context: { key: 'department', default: 'GEN' },
     separator: { value: '-' },
   }
-
-  const newSegment: SegmentConfig = {
-    type: segmentType as any,
-    config: defaultConfigs[segmentType] || {},
-    order: segments.value.length,
-    label: store.segmentTypes.find((s) => s.type === segmentType)?.label || segmentType,
-  }
-
-  segments.value.push(newSegment)
+  return { ...(defaultConfigs[segmentType] || {}) }
 }
 
 function editSegment(index: number) {
@@ -128,50 +153,36 @@ function editSegment(index: number) {
 
 function removeSegment(index: number) {
   segments.value.splice(index, 1)
-  segments.value.forEach((s, i) => (s.order = i))
+  syncSegmentOrder()
 }
 
 function moveSegment(from: number, to: number) {
   const item = segments.value.splice(from, 1)[0]
   segments.value.splice(to, 0, item)
-  segments.value.forEach((s, i) => (s.order = i))
+  syncSegmentOrder()
 }
 
 function updateSegment(index: number, updated: SegmentConfig) {
-  segments.value[index] = updated
+  segments.value[index] = { ...updated, order: index }
+  closeSegmentEditor()
+}
+
+function closeSegmentEditor() {
   showSegmentEditor.value = false
   editingSegmentIndex.value = null
 }
 
-// Save
-async function handleSave() {
-  try {
-    await formRef.value?.validate()
-  } catch {
-    message.error('Formu kontrol edin')
-    return
-  }
+function syncSegmentOrder() {
+  segments.value.forEach((segment, index) => (segment.order = index))
+}
 
-  if (segments.value.length === 0) {
-    message.error('En az bir segment ekleyin')
-    return
-  }
+async function handleSave() {
+  if (!(await validateBeforeSave())) return
 
   saving.value = true
   try {
-    const data = {
-      ...form.value,
-      segments_config: segments.value,
-    }
-
-    if (isEdit.value) {
-      await store.updateFormat(route.params.id as string, data)
-      message.success('Format güncellendi')
-    } else {
-      const created = await store.createFormat(data)
-      message.success('Format oluşturuldu')
-      router.replace(`/formats/${created.id}/edit`)
-    }
+    const data = { ...form.value, segments_config: segments.value }
+    await saveFormat(data)
   } catch (err: any) {
     message.error(err.response?.data?.error?.message || 'Kaydetme hatası')
   } finally {
@@ -179,7 +190,32 @@ async function handleSave() {
   }
 }
 
-// Generate preview
+async function validateBeforeSave(): Promise<boolean> {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    message.error('Formu kontrol edin')
+    return false
+  }
+
+  if (segments.value.length > 0) return true
+  message.error('En az bir segment ekleyin')
+  return false
+}
+
+async function saveFormat(data: Partial<DocumentFormat>) {
+  if (isEdit.value) {
+    const updated = await store.updateFormat(route.params.id as string, data)
+    applyLoadedFormat(updated)
+    message.success('Format güncellendi')
+    return
+  }
+
+  const created = await store.createFormat(data)
+  message.success('Format oluşturuldu')
+  router.replace(`/formats/${created.id}/edit`)
+}
+
 async function handleGenerate() {
   if (!isEdit.value) {
     message.warning('Önce formatı kaydedin')
@@ -188,9 +224,7 @@ async function handleGenerate() {
 
   generating.value = true
   try {
-    const result = await store.generateNumber(route.params.id as string, {
-      context_data: {},
-    })
+    const result = await store.generateNumber(route.params.id as string, { context_data: {} })
     generatedNumber.value = result.document_number
     message.success('Numara oluşturuldu!')
   } catch (err: any) {
@@ -214,44 +248,31 @@ function handleBack() {
 <template>
   <div>
     <n-spin :show="loading">
-      <!-- Header -->
       <n-space align="center" justify="space-between" style="margin-bottom: 24px">
         <n-space align="center">
           <n-button text @click="handleBack">
-            <template #icon>
-              <n-icon :component="ArrowBackOutline" />
-            </template>
+            <template #icon><n-icon :component="ArrowBackOutline" /></template>
           </n-button>
           <n-text tag="h1" style="margin: 0; font-size: 20px; font-weight: 600">
             {{ isEdit ? 'Format Düzenle' : 'Yeni Format Oluştur' }}
           </n-text>
           <n-tag v-if="form.status" :type="form.status === 'active' ? 'success' : 'default'">
-            {{ statusOptions.find(s => s.value === form.status)?.label }}
+            {{ statusOptions.find((status) => status.value === form.status)?.label }}
           </n-tag>
         </n-space>
 
         <n-space>
-          <n-button
-            :loading="generating"
-            :disabled="!isEdit"
-            @click="handleGenerate"
-            secondary
-          >
+          <n-button :loading="generating" :disabled="!isEdit" secondary @click="handleGenerate">
             <template #icon><n-icon :component="PlayOutline" /></template>
             Test Et
           </n-button>
-          <n-button
-            type="primary"
-            :loading="saving"
-            @click="handleSave"
-          >
+          <n-button type="primary" :loading="saving" @click="handleSave">
             <template #icon><n-icon :component="SaveOutline" /></template>
             Kaydet
           </n-button>
         </n-space>
       </n-space>
 
-      <!-- Generated Number Alert -->
       <n-alert
         v-if="generatedNumber"
         type="success"
@@ -274,22 +295,15 @@ function handleBack() {
       </n-alert>
 
       <n-grid :cols="3" :x-gap="20" :y-gap="20" responsive="screen" :item-responsive="true">
-        <!-- Left: Format Info -->
         <n-gi span="3 l:1">
           <n-card title="Format Bilgileri" size="small">
-            <n-form
-              ref="formRef"
-              :model="form"
-              :rules="formRules"
-              label-placement="top"
-              size="small"
-            >
+            <n-form ref="formRef" :model="form" :rules="formRules" label-placement="top" size="small">
               <n-form-item label="Format Kodu" path="code">
                 <n-input
                   v-model:value="form.code"
                   placeholder="INVOICE_2024"
                   :input-props="{ style: 'font-family: monospace; text-transform: uppercase' }"
-                  @input="(v: string) => form.code = v.toUpperCase()"
+                  @input="(value: string) => form.code = value.toUpperCase()"
                 />
               </n-form-item>
 
@@ -298,56 +312,32 @@ function handleBack() {
               </n-form-item>
 
               <n-form-item label="Açıklama">
-                <n-input
-                  v-model:value="form.description"
-                  type="textarea"
-                  :rows="2"
-                  placeholder="Format hakkında açıklama"
-                />
+                <n-input v-model:value="form.description" type="textarea" :rows="2" placeholder="Format hakkında açıklama" />
               </n-form-item>
 
               <n-form-item label="Kategori">
-                <n-select
-                  v-model:value="form.category"
-                  :options="categoryOptions"
-                  clearable
-                  placeholder="Kategori seçin"
-                />
+                <n-select v-model:value="form.category" :options="categoryOptions" clearable placeholder="Kategori seçin" />
               </n-form-item>
 
               <n-form-item label="Durum">
-                <n-select
-                  v-model:value="form.status"
-                  :options="statusOptions"
-                />
+                <n-select v-model:value="form.status" :options="statusOptions" />
               </n-form-item>
 
               <n-divider>Sıra Numarası Ayarları</n-divider>
 
               <n-form-item label="Sıfırlama Periyodu">
-                <n-select
-                  v-model:value="form.sequence_reset_period"
-                  :options="resetPeriodOptions"
-                />
+                <n-select v-model:value="form.sequence_reset_period" :options="resetPeriodOptions" />
               </n-form-item>
 
               <n-grid :cols="2" :x-gap="12">
                 <n-gi>
                   <n-form-item label="Başlangıç Değeri">
-                    <n-input-number
-                      v-model:value="form.sequence_start"
-                      :min="1"
-                      style="width: 100%"
-                    />
+                    <n-input-number v-model:value="form.sequence_start" :min="1" style="width: 100%" />
                   </n-form-item>
                 </n-gi>
                 <n-gi>
                   <n-form-item label="Adım">
-                    <n-input-number
-                      v-model:value="form.sequence_step"
-                      :min="1"
-                      style="width: 100%"
-                    />
+                    <n-input-number v-model:value="form.sequence_step" :min="1" style="width: 100%" />
                   </n-form-item>
                 </n-gi>
               </n-grid>
@@ -362,91 +352,43 @@ function handleBack() {
             </n-form>
           </n-card>
 
-          <!-- Segment Palette -->
           <n-card title="Segment Türleri" size="small" style="margin-top: 16px">
-            <segment-palette
-              :segment-types="store.segmentTypes"
-              @add="addSegment"
-            />
+            <segment-palette :segment-types="store.segmentTypes" @add="addSegment" />
           </n-card>
         </n-gi>
 
-        <!-- Center + Right: Builder -->
         <n-gi span="3 l:2">
-          <!-- Preview -->
-          <format-preview
-            :segments="segments"
-            :format-id="isEdit ? (route.params.id as string) : undefined"
-          />
+          <format-preview :segments="segments" :format-id="isEdit ? (route.params.id as string) : undefined" />
 
-          <!-- Segment List -->
-          <n-card
-            title="Segment Yapısı"
-            size="small"
-            style="margin-top: 16px"
-          >
+          <n-card title="Segment Yapısı" size="small" style="margin-top: 16px">
             <template #header-extra>
-              <n-text depth="3" style="font-size: 12px">
-                Segmentleri sürükleyerek sırala
-              </n-text>
+              <n-text depth="3" style="font-size: 12px">Segmentleri oklarla sırala</n-text>
             </template>
 
             <div v-if="segments.length === 0" class="empty-segments">
-              <n-text depth="3">
-                ← Sol panelden segment ekleyin
-              </n-text>
+              <n-text depth="3">← Sol panelden segment ekleyin</n-text>
             </div>
 
             <div v-else class="segment-list">
               <TransitionGroup name="segment">
-                <div
-                  v-for="(segment, index) in segments"
-                  :key="`${segment.type}-${index}`"
-                  class="segment-item"
-                >
-                  <div class="segment-handle">⠿</div>
+                <div v-for="(segment, index) in segments" :key="`${segment.type}-${index}`" class="segment-item">
+                  <div class="segment-handle">{{ index + 1 }}</div>
 
                   <div class="segment-info">
-                    <n-tag
-                      size="small"
-                      :type="getSegmentTagType(segment.type)"
-                      style="font-family: monospace"
-                    >
+                    <n-tag size="small" :type="getSegmentTagType(segment.type)" style="font-family: monospace">
                       {{ segment.type }}
                     </n-tag>
-                    <n-text style="margin-left: 8px">
-                      {{ segment.label || segment.type }}
-                    </n-text>
+                    <n-text style="margin-left: 8px">{{ segment.label || segment.type }}</n-text>
                     <n-text depth="3" style="margin-left: 8px; font-size: 12px">
                       {{ getSegmentDescription(segment) }}
                     </n-text>
                   </div>
 
                   <n-space size="small">
-                    <n-button
-                      text
-                      size="small"
-                      :disabled="index === 0"
-                      @click="moveSegment(index, index - 1)"
-                    >↑</n-button>
-                    <n-button
-                      text
-                      size="small"
-                      :disabled="index === segments.length - 1"
-                      @click="moveSegment(index, index + 1)"
-                    >↓</n-button>
-                    <n-button
-                      text
-                      size="small"
-                      type="info"
-                      @click="editSegment(index)"
-                    >Düzenle</n-button>
-                    <n-button
-                      text
-                      size="small"
-                      type="error"
-                      @click="removeSegment(index)"
-                    >Kaldır</n-button>
+                    <n-button text size="small" :disabled="index === 0" @click="moveSegment(index, index - 1)">↑</n-button>
+                    <n-button text size="small" :disabled="index === segments.length - 1" @click="moveSegment(index, index + 1)">↓</n-button>
+                    <n-button text size="small" type="info" @click="editSegment(index)">Düzenle</n-button>
+                    <n-button text size="small" type="error" @click="removeSegment(index)">Kaldır</n-button>
                   </n-space>
                 </div>
               </TransitionGroup>
@@ -456,18 +398,18 @@ function handleBack() {
       </n-grid>
     </n-spin>
 
-    <!-- Segment Editor Modal -->
     <n-modal
       v-model:show="showSegmentEditor"
       preset="card"
       :title="`Segment Düzenle: ${editingSegmentIndex !== null ? segments[editingSegmentIndex]?.type : ''}`"
       style="width: 600px"
+      @after-leave="editingSegmentIndex = null"
     >
       <segment-editor
-        v-if="editingSegmentIndex !== null && showSegmentEditor"
+        v-if="editingSegmentIndex !== null"
         :segment="segments[editingSegmentIndex]"
-        @update="(s) => updateSegment(editingSegmentIndex!, s)"
-        @cancel="showSegmentEditor = false"
+        @update="(segment) => updateSegment(editingSegmentIndex!, segment)"
+        @cancel="closeSegmentEditor"
       />
     </n-modal>
   </div>
@@ -490,12 +432,13 @@ function getSegmentTagType(type: SegmentType): TagType {
   return types[type] || 'default'
 }
 
-function getSegmentDescription(segment: any) {
+function getSegmentDescription(segment: SegmentConfig) {
   const config = segment.config || {}
   switch (segment.type) {
     case 'static': return `"${config.value || ''}"`
     case 'date': return config.format || 'YYYY'
     case 'sequence': return `${config.padding || 4} basamak`
+    case 'yearly_sequence': return `${config.padding || 4} basamak / yıllık`
     case 'random': return `${config.length || 6} ${config.char_type || 'alphanumeric'}`
     case 'checksum': return config.algorithm || 'mod10'
     case 'context': return `key: ${config.key || ''}`
@@ -536,9 +479,11 @@ function getSegmentDescription(segment: any) {
 }
 
 .segment-handle {
-  cursor: grab;
-  color: #bfbfbf;
-  font-size: 16px;
+  width: 28px;
+  color: #8c8c8c;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
   user-select: none;
 }
 

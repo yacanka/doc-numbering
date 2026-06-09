@@ -2,11 +2,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  NModal, NCard, NButton, NSpace, NText, NInput,
+  NModal, NButton, NSpace, NText, NInput,
   NForm, NFormItem, NInputNumber, NTag, NDivider,
-  NSpin, NAlert, NIcon, NEmpty,
+  NIcon,
 } from 'naive-ui'
-import { CopyOutline, DownloadOutline } from '@vicons/ionicons5'
+import { CopyOutline, DownloadOutline, ListOutline } from '@vicons/ionicons5'
+import { useRouter } from 'vue-router'
 import { useFormatsStore } from '@/stores/formats'
 import type { DocumentFormat, GeneratedDocument } from '@/types'
 import { useMessage } from 'naive-ui'
@@ -18,8 +19,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:show': [value: boolean]
+  generated: [documents: GeneratedDocument[]]
 }>()
 
+const router = useRouter()
 const message = useMessage()
 const store = useFormatsStore()
 const loading = ref(false)
@@ -50,6 +53,7 @@ async function generate() {
     })
 
     generatedDocs.value = Array.isArray(result) ? result : [result]
+    emit('generated', generatedDocs.value)
 
     message.success(`${generatedDocs.value.length} numara oluşturuldu!`)
   } catch (err: any) {
@@ -83,6 +87,11 @@ function downloadCSV() {
   a.download = `${props.format.code}_${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function openDocumentsPage() {
+  emit('update:show', false)
+  router.push({ path: '/documents', query: { format: props.format.id } })
 }
 
 function handleClose() {
@@ -164,6 +173,10 @@ function handleClose() {
         <n-button size="small" @click="downloadCSV">
           <template #icon><n-icon :component="DownloadOutline" /></template>
           CSV İndir
+        </n-button>
+        <n-button size="small" @click="openDocumentsPage">
+          <template #icon><n-icon :component="ListOutline" /></template>
+          Belgelerde Göster
         </n-button>
       </n-space>
 

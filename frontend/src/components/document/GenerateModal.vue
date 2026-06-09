@@ -27,11 +27,18 @@ const count = ref(1)
 const contextData = ref<Record<string, string>>({})
 const generatedDocs = ref<GeneratedDocument[]>([])
 
-// Extract context keys from format segments
+// Extract context keys from format segments. List payloads may omit segments_config,
+// so the modal must stay render-safe until the detail payload is available.
 const contextKeys = computed(() => {
-  return props.format.segments_config
-    .filter((s) => s.type === 'context')
-    .map((s) => ({ key: s.config.key, default: s.config.default || '' }))
+  const segments = props.format.segments_config ?? []
+
+  return segments
+    .filter((segment) => segment.type === 'context')
+    .map((segment) => ({
+      key: String(segment.config?.key ?? ''),
+      default: String(segment.config?.default ?? ''),
+    }))
+    .filter((contextKey) => contextKey.key.length > 0)
 })
 
 async function generate() {
@@ -42,11 +49,7 @@ async function generate() {
       context_data: contextData.value,
     })
 
-    if (count.value === 1) {
-      generatedDocs.value = [result]
-    } else {
-      generatedDocs.value = result
-    }
+    generatedDocs.value = Array.isArray(result) ? result : [result]
 
     message.success(`${generatedDocs.value.length} numara oluşturuldu!`)
   } catch (err: any) {

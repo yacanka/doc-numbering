@@ -1,6 +1,6 @@
 <!-- src/views/FormatsView.vue -->
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, h } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NCard, NButton, NSpace, NText, NInput, NSelect,
@@ -14,7 +14,6 @@ import {
   PlayOutline, EllipsisHorizontalOutline,
 } from '@vicons/ionicons5'
 import { useFormatsStore } from '@/stores/formats'
-import { formatsApi } from '@/api/formats'
 import type { DocumentFormat } from '@/types'
 import GenerateModal from '@/components/document/GenerateModal.vue'
 
@@ -23,21 +22,22 @@ const message = useMessage()
 const store = useFormatsStore()
 
 const searchQuery = ref('')
-const statusFilter = ref<string | null>(null)
-const categoryFilter = ref<string | null>(null)
-const generating = ref<string | null>(null)
+const allFilterValue = 'all'
+const statusFilter = ref(allFilterValue)
+const categoryFilter = ref(allFilterValue)
+const generateModalLoading = ref(false)
 const showGenerateModal = ref(false)
 const selectedFormat = ref<DocumentFormat | null>(null)
 
 const statusOptions = [
-  { label: 'Tümü', value: null },
+  { label: 'Tümü', value: allFilterValue },
   { label: 'Aktif', value: 'active' },
   { label: 'Taslak', value: 'draft' },
   { label: 'Kullanım Dışı', value: 'deprecated' },
 ]
 
 const categoryOptions = computed(() => [
-  { label: 'Tüm Kategoriler', value: null },
+  { label: 'Tüm Kategoriler', value: allFilterValue },
   ...store.categories.map((c) => ({ label: c.name, value: c.id })),
 ])
 
@@ -56,8 +56,8 @@ const filteredFormats = computed(() => {
         return false
       }
     }
-    if (statusFilter.value && f.status !== statusFilter.value) return false
-    if (categoryFilter.value && f.category !== categoryFilter.value) return false
+    if (statusFilter.value !== allFilterValue && f.status !== statusFilter.value) return false
+    if (categoryFilter.value !== allFilterValue && f.category !== categoryFilter.value) return false
     return true
   })
 })
@@ -72,9 +72,17 @@ function getStatusTag(status: string) {
   return map[status] || { type: 'default', label: status }
 }
 
-function openGenerate(format: DocumentFormat) {
+async function openGenerate(format: DocumentFormat) {
   selectedFormat.value = format
-  showGenerateModal.value = true
+  generateModalLoading.value = true
+  try {
+    selectedFormat.value = await store.fetchFormat(format.id)
+    showGenerateModal.value = true
+  } catch (err: any) {
+    message.error(err.response?.data?.error?.message || 'Format detayları alınamadı')
+  } finally {
+    generateModalLoading.value = false
+  }
 }
 
 function getFormatActions(format: DocumentFormat) {
@@ -134,7 +142,6 @@ async function handleFormatAction(key: string, format: DocumentFormat) {
   }
 }
 
-import { h } from 'vue'
 </script>
 
 <template>
@@ -185,7 +192,6 @@ import { h } from 'vue'
           :options="categoryOptions"
           style="width: 200px"
           placeholder="Kategori"
-          clearable
         />
       </n-space>
     </n-card>
@@ -264,7 +270,8 @@ import { h } from 'vue'
                 <n-button
                   size="small"
                   type="primary"
-                  :disabled="format.status !== 'active'"
+                  :disabled="format.status !== 'active' || generateModalLoading"
+                  :loading="generateModalLoading && selectedFormat?.id === format.id"
                   @click="openGenerate(format)"
                 >
                   <template #icon><n-icon :component="PlayOutline" /></template>

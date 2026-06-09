@@ -19,6 +19,9 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const collapsed = ref(false)
+const menuThemeOverrides = {
+  itemColorActiveCollapsed: 'rgba(24, 144, 255, 0.15)',
+}
 
 const menuOptions = [
   {
@@ -95,9 +98,7 @@ function handleUserAction(key: string) {
         :value="activeKey"
         @update:value="handleMenuSelect"
         :root-indent="18"
-        theme-overrides="{
-          itemColorActiveCollapsed: 'rgba(24, 144, 255, 0.15)',
-        }"
+        :theme-overrides="menuThemeOverrides"
       />
     </n-layout-sider>
 

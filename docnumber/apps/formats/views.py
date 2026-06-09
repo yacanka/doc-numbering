@@ -44,7 +44,7 @@ class DocumentFormatViewSet(viewsets.ModelViewSet):
         return DocumentFormat.objects.select_related(
             'category', 'created_by'
         ).annotate(
-            total_generated=Count('generated_documents')
+            _total_generated=Count('generated_documents')
         ).order_by('-created_at')
 
     def get_serializer_class(self):

@@ -52,3 +52,44 @@ class DocumentNumberGeneratorTests(TestCase):
 
         self.assertEqual(document.sequence_value, 7)
         self.assertEqual(FormatSequence.objects.count(), 1)
+
+
+@override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}})
+class DocumentFormatApiTests(TestCase):
+    """Regression tests for document format API query annotations."""
+
+    def setUp(self):
+        """Create an authenticated API client and reusable document format."""
+        from rest_framework.test import APIClient
+
+        self.user = get_user_model().objects.create_user('apiuser', password='secret')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.format = DocumentFormat.objects.create(
+            code='API',
+            name='API Format',
+            status='active',
+            segments_config=[
+                {'type': 'static', 'order': 1, 'config': {'value': 'API-'}},
+                {'type': 'sequence', 'order': 2, 'config': {'padding': 3}},
+            ],
+            created_by=self.user,
+        )
+
+    def test_list_formats_does_not_collide_with_total_generated_property(self):
+        """List endpoint must not annotate over the read-only model property."""
+        response = self.client.get('/api/v1/formats/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['data'][0]['total_generated'], 0)
+
+    def test_detail_and_preview_do_not_collide_with_total_generated_property(self):
+        """Detail and preview endpoints must load annotated format instances."""
+        detail_response = self.client.get(f'/api/v1/formats/{self.format.id}/')
+        preview_response = self.client.get(f'/api/v1/formats/{self.format.id}/preview/')
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(preview_response.status_code, 200)
+        self.assertEqual(detail_response.data['total_generated'], 0)
+        self.assertTrue(preview_response.data['success'])

@@ -84,7 +84,7 @@ exit /b 0
 :prepare_frontend
 echo [3/5] Installing frontend dependencies...
 pushd "%FRONTEND_DIR%"
-npm install
+call npm install
 if errorlevel 1 popd & call :fail "Could not install frontend dependencies. Check network or proxy settings." & exit /b 1
 popd
 exit /b 0

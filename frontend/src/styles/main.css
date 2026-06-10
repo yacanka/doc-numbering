@@ -9,12 +9,14 @@ body,
   --app-body-bg: #f5f7fb;
   --app-content-bg: #f0f2f5;
   --app-surface-bg: #ffffff;
+  --app-text-color: #1f2225;
 }
 
 :root[data-theme='dark'] {
   --app-body-bg: #101014;
   --app-content-bg: #18181c;
   --app-surface-bg: #1f1f23;
+  --app-text-color: #ffffffe6;
 }
 
 body {

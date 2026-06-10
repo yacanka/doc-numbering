@@ -68,12 +68,13 @@ const segmentEmojis: Record<string, string> = {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  background: white;
+  background: var(--app-content-color);
   min-height: 64px;
 }
 
 .segment-palette-item:hover {
   transform: translateY(-2px);
+  background: var(--app-surface-bg);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 

@@ -166,13 +166,13 @@ watch(
   font-family: monospace;
   font-size: 14px;
   font-weight: 600;
-  color: #262626;
+  color: var(--app-text-color);
   white-space: nowrap;
 }
 
 .preview-full {
-  background: #001529;
-  color: #52e52e;
+  background: var(--n-border-color);
+  color: var(--app-text-color);
   font-family: 'Courier New', monospace;
   font-size: 22px;
   font-weight: 700;

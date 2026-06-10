@@ -1,3 +1,20 @@
+export interface User {
+  id: number
+  username: string
+  email: string
+  first_name: string
+  last_name: string
+}
+
+export interface UserProfileUpdate {
+  email: string
+  first_name: string
+  last_name: string
+}
+
+export type ThemePreference = 'light' | 'dark'
+export type InterfaceDensity = 'comfortable' | 'compact'
+
 // src/types/index.ts
 export interface SegmentConfig {
   type: SegmentType

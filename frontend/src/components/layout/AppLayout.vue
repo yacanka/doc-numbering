@@ -78,14 +78,12 @@ function handleUserAction(key: string) {
       :collapsed="collapsed"
       show-trigger
       @collapse="collapsed = true"
-      @expand="collapsed = false"
-      style="background: #001529"
-    >
+      @expand="collapsed = false">
       <!-- Logo -->
       <div class="sidebar-logo" :class="{ collapsed }">
         <div class="logo-icon">📋</div>
         <Transition name="fade">
-          <n-text v-if="!collapsed" strong style="color: white; font-size: 16px; white-space: nowrap">
+          <n-text v-if="!collapsed" strong style="color: var(--n-text-color); font-size: 16px; white-space: nowrap">
             DocNumber
           </n-text>
         </Transition>

@@ -230,7 +230,7 @@ async function handleFormatAction(key: string, format: DocumentFormat) {
                     </n-tag>
                     <n-text
                       strong
-                      style="font-family: monospace; font-size: 12px; color: #1890ff"
+                      style="font-family: monospace; font-size: 12px; color: var(--n-text-color)"
                     >
                       {{ format.code }}
                     </n-text>
@@ -336,8 +336,8 @@ async function handleFormatAction(key: string, format: DocumentFormat) {
 }
 
 .format-preview-box {
-  background: #001529;
-  color: #52e52e;
+  background: var(--n-border-color);
+  color: var(--n-text-color);
   font-family: 'Courier New', monospace;
   font-size: 14px;
   font-weight: 600;

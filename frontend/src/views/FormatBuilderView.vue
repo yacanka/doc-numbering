@@ -467,7 +467,7 @@ function getSegmentDescription(segment: SegmentConfig) {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: #fafafa;
+  background: var(--app-content-bg);
   border: 1px solid #f0f0f0;
   border-radius: 8px;
   transition: all 0.2s;
@@ -475,7 +475,7 @@ function getSegmentDescription(segment: SegmentConfig) {
 
 .segment-item:hover {
   border-color: #1890ff;
-  background: #f0f7ff;
+  background: var(--app-surface-bg);
 }
 
 .segment-handle {

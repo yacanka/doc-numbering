@@ -1,28 +1,57 @@
+from django.contrib.auth import get_user_model
 from django.urls import path
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
+class CurrentUserSerializer(serializers.ModelSerializer):
+    """Serialize authenticated user profile fields exposed to the frontend."""
+
+    username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = get_user_model()
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        read_only_fields = ['id', 'username']
+        extra_kwargs = {
+            'email': {'required': True, 'allow_blank': False},
+            'first_name': {'required': False, 'allow_blank': True},
+            'last_name': {'required': False, 'allow_blank': True},
+        }
+
+    def get_username(self, user):
+        """Return the configured username identifier for the user model."""
+        return user.get_username()
+
+    def validate_email(self, value):
+        """Normalize the email address before saving it."""
+        normalized_email = value.strip().lower()
+        if not normalized_email:
+            raise serializers.ValidationError('Email address is required.')
+        return normalized_email
+
+
 class CurrentUserView(APIView):
-    """Return the authenticated user's public profile."""
+    """Return and update the authenticated user's public profile."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Return identity fields needed by the frontend."""
-        user = request.user
         return Response({
             'success': True,
-            'data': {
-                'id': user.id,
-                'username': user.get_username(),
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-            },
+            'data': CurrentUserSerializer(request.user).data,
         })
+
+    def patch(self, request):
+        """Update editable profile fields without allowing username changes."""
+        serializer = CurrentUserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'success': True, 'data': serializer.data})
 
 
 urlpatterns = [

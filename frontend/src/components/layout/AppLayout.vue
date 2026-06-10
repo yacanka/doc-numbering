@@ -5,7 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   NLayout, NLayoutSider, NLayoutContent, NLayoutHeader,
   NMenu, NIcon, NText, NAvatar, NDropdown, NSpace,
-  NBreadcrumb, NBreadcrumbItem, NSwitch, NTag,
+  NBreadcrumb, NBreadcrumbItem, NTag,
 } from 'naive-ui'
 import {
   GridOutline, DocumentTextOutline, SettingsOutline,
@@ -59,6 +59,7 @@ const userDropdownOptions = [
 ]
 
 function handleUserAction(key: string) {
+  if (key === 'profile') router.push('/settings')
   if (key === 'logout') {
     authStore.logout()
     router.push('/login')
@@ -107,7 +108,7 @@ function handleUserAction(key: string) {
       <!-- Header -->
       <n-layout-header
         bordered
-        style="height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between;"
+        class="app-header"
       >
         <n-breadcrumb>
           <n-breadcrumb-item>Ana Sayfa</n-breadcrumb-item>
@@ -134,7 +135,7 @@ function handleUserAction(key: string) {
 
       <!-- Page Content -->
       <n-layout-content
-        content-style="padding: 24px; background: #f0f2f5; min-height: calc(100vh - 64px)"
+        content-style="padding: 24px; background: var(--app-content-bg); min-height: calc(100vh - 64px)"
       >
         <RouterView />
       </n-layout-content>
@@ -143,6 +144,15 @@ function handleUserAction(key: string) {
 </template>
 
 <style scoped>
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  background: var(--app-surface-bg);
+}
+
 .sidebar-logo {
   display: flex;
   align-items: center;

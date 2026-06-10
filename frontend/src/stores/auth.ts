@@ -1,15 +1,9 @@
 // src/stores/auth.ts
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
 import { apiClient } from '@/api/client'
-
-interface User {
-  id: number
-  username: string
-  email: string
-  first_name: string
-  last_name: string
-}
+import { fetchCurrentUser, updateCurrentUser } from '@/api/auth'
+import type { User, UserProfileUpdate } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -17,27 +11,35 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(localStorage.getItem('refresh_token'))
 
   const isAuthenticated = computed(() => !!accessToken.value)
-  const fullName = computed(() =>
-    user.value
-      ? `${user.value.first_name} ${user.value.last_name}`.trim() || user.value.username
-      : ''
-  )
+  const fullName = computed(() => {
+    if (!user.value) return ''
+    return `${user.value.first_name} ${user.value.last_name}`.trim() || user.value.username
+  })
 
   async function login(username: string, password: string) {
     const response = await apiClient.post<{ access: string; refresh: string }>(
       '/auth/token/',
       { username, password }
     )
-    accessToken.value = response.data.access
-    refreshToken.value = response.data.refresh
-    localStorage.setItem('access_token', response.data.access)
-    localStorage.setItem('refresh_token', response.data.refresh)
+    persistTokens(response.data.access, response.data.refresh)
     await fetchUser()
   }
 
   async function fetchUser() {
-    const response = await apiClient.get<{ data: User }>('/auth/me/')
+    const response = await fetchCurrentUser()
     user.value = response.data.data
+  }
+
+  async function updateProfile(payload: UserProfileUpdate) {
+    const response = await updateCurrentUser(payload)
+    user.value = response.data.data
+  }
+
+  function persistTokens(access: string, refresh: string) {
+    accessToken.value = access
+    refreshToken.value = refresh
+    localStorage.setItem('access_token', access)
+    localStorage.setItem('refresh_token', refresh)
   }
 
   function logout() {
@@ -48,5 +50,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('refresh_token')
   }
 
-  return { user, accessToken, isAuthenticated, fullName, login, logout, fetchUser }
+  return { user, accessToken, isAuthenticated, fullName, login, logout, fetchUser, updateProfile }
 })

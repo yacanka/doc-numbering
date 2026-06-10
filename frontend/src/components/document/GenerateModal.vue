@@ -218,8 +218,8 @@ function handleClose() {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: #001529;
+  background: var(--n-border-color);
   border-radius: 6px;
-  color: #52e52e;
+  color: var(--n-text-color);
 }
 </style>

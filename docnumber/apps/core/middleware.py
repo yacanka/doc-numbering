@@ -21,7 +21,7 @@ class RequestLoggingMiddleware:
         logger.info(
             f"[{request_id}] {request.method} {request.path} "
             f"status={response.status_code} duration={duration:.3f}s "
-            f"user={getattr(request.user, 'id', 'anonymous')}"
+            f"user={getattr(request.user, 'username', 'anonymous')}"
         )
 
         response['X-Request-ID'] = request_id

@@ -22,6 +22,7 @@ const store = useFormatsStore()
 const isEdit = computed(() => Boolean(route.params.id))
 const loading = ref(false)
 const saving = ref(false)
+const savingCategory = ref(false)
 const generating = ref(false)
 const generatedNumber = ref('')
 const formRef = ref()
@@ -29,6 +30,7 @@ const form = ref<Partial<DocumentFormat>>(createEmptyFormat())
 const segments = ref<SegmentConfig[]>([])
 const editingSegmentIndex = ref<number | null>(null)
 const showSegmentEditor = ref(false)
+const newCategoryName = ref('')
 
 const statusOptions = [
   { label: 'Taslak', value: 'draft' },
@@ -176,6 +178,30 @@ function syncSegmentOrder() {
   segments.value.forEach((segment, index) => (segment.order = index))
 }
 
+async function handleCreateCategory() {
+  const name = newCategoryName.value.trim()
+  if (!name) return
+
+  savingCategory.value = true
+  try {
+    const category = await store.createCategory({ name, code: buildCategoryCode(name) })
+    form.value.category = category.id
+    newCategoryName.value = ''
+    message.success('Kategori oluşturuldu')
+  } catch (err: any) {
+    message.error(err.response?.data?.error?.message || 'Kategori oluşturulamadı')
+  } finally {
+    savingCategory.value = false
+  }
+}
+
+function buildCategoryCode(name: string) {
+  const asciiName = name.replace(/ı/g, 'i').replace(/İ/g, 'I')
+  const normalized = asciiName.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const code = normalized.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '')
+  return code || 'CATEGORY'
+}
+
 async function handleSave() {
   if (!(await validateBeforeSave())) return
 
@@ -316,7 +342,28 @@ function handleBack() {
               </n-form-item>
 
               <n-form-item label="Kategori">
-                <n-select v-model:value="form.category" :options="categoryOptions" clearable placeholder="Kategori seçin" />
+                <n-space vertical style="width: 100%">
+                  <n-select
+                    v-model:value="form.category"
+                    :options="categoryOptions"
+                    clearable
+                    placeholder="Kategori seçin"
+                  />
+                  <n-space :wrap="false">
+                    <n-input
+                      v-model:value="newCategoryName"
+                      placeholder="Yeni kategori adı"
+                      @keyup.enter="handleCreateCategory"
+                    />
+                    <n-button
+                      :loading="savingCategory"
+                      :disabled="!newCategoryName.trim()"
+                      @click="handleCreateCategory"
+                    >
+                      Ekle
+                    </n-button>
+                  </n-space>
+                </n-space>
               </n-form-item>
 
               <n-form-item label="Durum">

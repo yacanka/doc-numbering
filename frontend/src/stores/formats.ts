@@ -58,6 +58,13 @@ export const useFormatsStore = defineStore('formats', () => {
     segmentTypes.value = response.data.data
   }
 
+  async function createCategory(data: Partial<FormatCategory>) {
+    const response = await formatsApi.createCategory(data)
+    categories.value.push(response.data.data)
+    categories.value.sort((left, right) => left.name.localeCompare(right.name))
+    return response.data.data
+  }
+
   async function createFormat(data: Partial<DocumentFormat>) {
     const response = await formatsApi.createFormat(data)
     formats.value.unshift(response.data.data)
@@ -104,7 +111,7 @@ export const useFormatsStore = defineStore('formats', () => {
     formats, categories, segmentTypes, currentFormat,
     loading, pagination, activeFormats,
     fetchFormats, fetchFormat, fetchCategories, fetchSegmentTypes,
-    createFormat, updateFormat, deleteFormat,
+    createCategory, createFormat, updateFormat, deleteFormat,
     generateNumber, activateFormat, deactivateFormat, duplicateFormat,
   }
 })

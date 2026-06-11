@@ -27,6 +27,11 @@ class CancelDocumentSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
 
+class DocumentStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=GeneratedDocument.STATUS_CHOICES)
+    reason = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
 class DocumentStatsSerializer(serializers.Serializer):
     total_generated = serializers.IntegerField()
     active_count = serializers.IntegerField()

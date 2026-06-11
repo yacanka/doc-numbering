@@ -4,7 +4,7 @@ import { computed, h, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   NButton, NCard, NDataTable, NInput, NSelect, NSpace,
-  NStatistic, NTag, NText, useMessage, type DataTableColumns,
+  NStatistic, NText, useMessage, type DataTableColumns,
 } from 'naive-ui'
 import { documentsApi, type DocumentFilters } from '@/api/documents'
 import { useFormatsStore } from '@/stores/formats'
@@ -19,14 +19,19 @@ const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('all')
 const formatFilter = ref<string | null>(null)
+const updatingStatusIds = ref<string[]>([])
 const pagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
 
-const statusOptions = [
-  { label: 'Tümü', value: 'all' },
+const documentStatusOptions = [
   { label: 'Aktif', value: 'active' },
   { label: 'Kullanıldı', value: 'used' },
   { label: 'İptal', value: 'cancelled' },
   { label: 'Süresi Doldu', value: 'expired' },
+]
+
+const statusOptions = [
+  { label: 'Tümü', value: 'all' },
+  ...documentStatusOptions,
 ]
 
 const formatOptions = computed(() =>
@@ -107,23 +112,44 @@ function renderFormat(row: GeneratedDocument) {
 }
 
 function renderStatus(row: GeneratedDocument) {
-  const status = getStatusTag(row.status)
-  return h(NTag, { type: status.type, size: 'small' }, { default: () => status.label })
+  return h(NSelect, {
+    value: row.status,
+    options: documentStatusOptions,
+    size: 'small',
+    disabled: isStatusUpdating(row.id),
+    loading: isStatusUpdating(row.id),
+    style: 'width: 140px',
+    onUpdateValue: (value) => handleStatusChange(row, value),
+  })
 }
 
 function renderDate(row: GeneratedDocument) {
   return new Date(row.generated_at).toLocaleString('tr-TR')
 }
 
-function getStatusTag(status: GeneratedDocument['status']) {
-  const map = {
-    active: { type: 'success' as const, label: 'Aktif' },
-    used: { type: 'info' as const, label: 'Kullanıldı' },
-    cancelled: { type: 'error' as const, label: 'İptal' },
-    expired: { type: 'warning' as const, label: 'Süresi Doldu' },
-  }
-  return map[status] || { type: 'default' as const, label: status }
+function isStatusUpdating(id: string) {
+  return updatingStatusIds.value.includes(id)
 }
+
+async function handleStatusChange(row: GeneratedDocument, nextStatus: GeneratedDocument['status']) {
+  if (row.status === nextStatus) return
+  updatingStatusIds.value = [...updatingStatusIds.value, row.id]
+  try {
+    const response = await documentsApi.updateStatus(row.id, nextStatus)
+    replaceDocument(response.data.data)
+    message.success('Durum güncellendi')
+  } catch (err: any) {
+    message.error(err.response?.data?.error?.message || 'Durum güncellenemedi')
+  } finally {
+    updatingStatusIds.value = updatingStatusIds.value.filter((id) => id !== row.id)
+  }
+}
+
+function replaceDocument(updatedDocument: GeneratedDocument) {
+  const index = documents.value.findIndex((item) => item.id === updatedDocument.id)
+  if (index !== -1) documents.value[index] = updatedDocument
+}
+
 </script>
 
 <template>

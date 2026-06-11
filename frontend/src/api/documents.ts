@@ -32,6 +32,12 @@ export const documentsApi = {
   markUsed: (id: string) =>
     apiClient.post(`/documents/${id}/mark-used/`),
 
+  updateStatus: (id: string, status: GeneratedDocument['status'], reason = '') =>
+    apiClient.patch<ApiResponse<GeneratedDocument>>(`/documents/${id}/status/`, {
+      status,
+      reason,
+    }),
+
   validateNumber: (number: string) =>
     apiClient.get<ApiResponse<any>>(`/documents/validate/${number}/`),
 

@@ -56,17 +56,26 @@ class GeneratedDocument(models.Model):
         return self.document_number
 
     def cancel(self, reason='', user=None):
-        from django.utils import timezone
-        self.status = 'cancelled'
-        self.cancelled_at = timezone.now()
-        self.cancellation_reason = reason
-        self.save(update_fields=['status', 'cancelled_at', 'cancellation_reason'])
+        """Cancel this document number and store an optional reason."""
+        self.change_status('cancelled', reason=reason)
 
     def mark_used(self):
+        """Mark this document number as used."""
+        self.change_status('used')
+
+    def change_status(self, new_status, reason=''):
+        """Change lifecycle status while keeping audit timestamps consistent."""
+        if new_status not in dict(self.STATUS_CHOICES):
+            raise ValueError(f'Unsupported document status: {new_status}')
         from django.utils import timezone
-        self.status = 'used'
-        self.used_at = timezone.now()
-        self.save(update_fields=['status', 'used_at'])
+        now = timezone.now()
+        self.status = new_status
+        self.used_at = now if new_status == 'used' else None
+        self.cancelled_at = now if new_status == 'cancelled' else None
+        self.cancellation_reason = reason if new_status == 'cancelled' else ''
+        self.save(update_fields=[
+            'status', 'used_at', 'cancelled_at', 'cancellation_reason'
+        ])
 
     @property
     def is_valid(self):

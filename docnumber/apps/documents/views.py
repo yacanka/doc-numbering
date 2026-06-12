@@ -11,6 +11,7 @@ from .models import GeneratedDocument
 from .serializers import (
     GeneratedDocumentSerializer,
     CancelDocumentSerializer,
+    DocumentStatusUpdateSerializer,
     DocumentStatsSerializer,
 )
 from .filters import GeneratedDocumentFilter
@@ -76,6 +77,20 @@ class GeneratedDocumentViewSet(viewsets.ReadOnlyModelViewSet):
 
         doc.mark_used()
         return Response({'success': True, 'message': 'Document marked as used'})
+
+    @action(detail=True, methods=['patch'], url_path='status')
+    def update_status(self, request, pk=None):
+        """Update a generated document number lifecycle status."""
+        doc = self.get_object()
+        serializer = DocumentStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        doc.change_status(
+            serializer.validated_data['status'],
+            reason=serializer.validated_data.get('reason', '')
+        )
+        data = self.get_serializer(doc).data
+        return Response({'success': True, 'data': data})
 
     @action(detail=False, methods=['get'], url_path='validate/(?P<number>[^/.]+)')
     def validate_number(self, request, number=None):

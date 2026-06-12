@@ -27,9 +27,22 @@ class SegmentConfigSerializer(serializers.Serializer):
 
 
 class FormatCategorySerializer(serializers.ModelSerializer):
+    code = serializers.SlugField(max_length=50)
+
     class Meta:
         model = FormatCategory
         fields = ['id', 'name', 'code', 'color', 'icon', 'order']
+
+    def validate_code(self, value):
+        """Reject duplicate generated category codes with clear feedback."""
+        queryset = FormatCategory.objects.filter(code=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(
+                'A category with this generated code already exists. Use a different name.'
+            )
+        return value
 
 
 class DocumentFormatListSerializer(serializers.ModelSerializer):

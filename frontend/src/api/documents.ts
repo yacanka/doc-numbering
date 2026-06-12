@@ -8,7 +8,7 @@ import type {
 } from '@/types'
 
 export interface DocumentFilters {
-  format?: string
+  format_id?: string
   status?: string
   search?: string
   date_from?: string

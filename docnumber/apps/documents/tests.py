@@ -12,7 +12,7 @@ class GeneratedDocumentModelTests(TestCase):
     def setUp(self):
         """Create a persisted generated document."""
         user = get_user_model().objects.create_user('operator')
-        document_format = DocumentFormat.objects.create(
+        self.document_format = DocumentFormat.objects.create(
             code='PO',
             name='Purchase Order',
             status='active',
@@ -20,7 +20,7 @@ class GeneratedDocumentModelTests(TestCase):
             created_by=user,
         )
         self.document = GeneratedDocument.objects.create(
-            format=document_format,
+            format=self.document_format,
             document_number='PO-1',
             sequence_value=1,
             generated_by=user,
@@ -55,7 +55,7 @@ class GeneratedDocumentApiTests(TestCase):
         self.user = get_user_model().objects.create_user('apiuser', password='secret')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        document_format = DocumentFormat.objects.create(
+        self.document_format = DocumentFormat.objects.create(
             code='API_DOC',
             name='API Document',
             status='active',
@@ -63,12 +63,35 @@ class GeneratedDocumentApiTests(TestCase):
             created_by=self.user,
         )
         self.document = GeneratedDocument.objects.create(
-            format=document_format,
+            format=self.document_format,
             document_number='API-1',
             sequence_value=1,
             generated_by=self.user,
             generated_at=timezone.now(),
         )
+
+    def test_list_filters_documents_by_format(self):
+        """Documents can be filtered by the selected format UUID."""
+        other_format = DocumentFormat.objects.create(
+            code='OTHER_DOC',
+            name='Other API Document',
+            status='active',
+            segments_config=[{'type': 'static', 'config': {'value': 'OTHER'}}],
+            created_by=self.user,
+        )
+        GeneratedDocument.objects.create(
+            format=other_format,
+            document_number='OTHER-1',
+            sequence_value=1,
+            generated_by=self.user,
+            generated_at=timezone.now(),
+        )
+
+        response = self.client.get('/api/v1/documents/', {'format_id': str(self.document_format.id)})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['pagination']['count'], 1)
+        self.assertEqual(response.data['data'][0]['format'], str(self.document_format.id))
 
     def test_update_status_marks_document_used(self):
         """Status endpoint updates status and usage timestamp."""

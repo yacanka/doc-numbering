@@ -1,13 +1,20 @@
 // src/api/client.ts
 import axios, {
+  AxiosHeaders,
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
+  type InternalAxiosRequestConfig,
 } from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { isAuthenticationEndpoint, shouldRefreshAccessToken } from '@/api/authRefreshPolicy'
+
+type TokenRefreshResponse = { access: string }
+type RetriableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean }
 
 class ApiClient {
   private instance: AxiosInstance
+  private refreshTokenRequest: Promise<string> | null = null
 
   constructor() {
     this.instance = axios.create({
@@ -23,50 +30,74 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor
     this.instance.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('access_token')
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-        return config
-      },
+      (config) => this.authorizeRequest(config),
       (error) => Promise.reject(error)
     )
 
-    // Response interceptor
     this.instance.interceptors.response.use(
       (response: AxiosResponse) => response,
-      async (error) => {
-        const originalRequest = error.config
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true
-
-          try {
-            const refreshToken = localStorage.getItem('refresh_token')
-            if (!refreshToken) throw new Error('No refresh token')
-
-            const response = await this.instance.post('/auth/token/refresh/', {
-              refresh: refreshToken,
-            })
-
-            const { access } = response.data
-            localStorage.setItem('access_token', access)
-            originalRequest.headers.Authorization = `Bearer ${access}`
-
-            return this.instance(originalRequest)
-          } catch {
-            const authStore = useAuthStore()
-            authStore.logout()
-            window.location.href = '/login'
-          }
-        }
-
-        return Promise.reject(error)
-      }
+      async (error) => this.handleUnauthorizedResponse(error)
     )
+  }
+
+  private authorizeRequest(config: InternalAxiosRequestConfig) {
+    if (isAuthenticationEndpoint(config.url)) return config
+
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers = AxiosHeaders.from(config.headers)
+      config.headers.set('Authorization', `Bearer ${token}`)
+    }
+    return config
+  }
+
+  private async handleUnauthorizedResponse(error: any) {
+    const originalRequest = error.config as RetriableRequestConfig | undefined
+
+    if (!originalRequest || !shouldRefreshAccessToken(error.response?.status, originalRequest)) {
+      return Promise.reject(error)
+    }
+
+    originalRequest._retry = true
+
+    try {
+      const accessToken = await this.refreshAccessToken()
+      originalRequest.headers = AxiosHeaders.from(originalRequest.headers)
+      originalRequest.headers.set('Authorization', `Bearer ${accessToken}`)
+      return this.instance(originalRequest)
+    } catch (refreshError) {
+      this.redirectToLogin()
+      return Promise.reject(refreshError)
+    }
+  }
+
+  private refreshAccessToken() {
+    this.refreshTokenRequest ??= this.requestNewAccessToken().finally(() => {
+      this.refreshTokenRequest = null
+    })
+    return this.refreshTokenRequest
+  }
+
+  private async requestNewAccessToken() {
+    const refreshToken = localStorage.getItem('refresh_token')
+    if (!refreshToken) throw new Error('No refresh token')
+
+    const response = await this.instance.post<TokenRefreshResponse>('/auth/token/refresh/', {
+      refresh: refreshToken,
+    })
+
+    localStorage.setItem('access_token', response.data.access)
+    return response.data.access
+  }
+
+  private redirectToLogin() {
+    const authStore = useAuthStore()
+    authStore.logout()
+
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
   }
 
   get<T>(url: string, config?: AxiosRequestConfig) {

@@ -1,10 +1,16 @@
 # apps/documents/filters.py
 import django_filters
+from apps.formats.models import DocumentFormat
 from .models import GeneratedDocument
 
 
 class GeneratedDocumentFilter(django_filters.FilterSet):
-    format = django_filters.UUIDFilter()
+    """Filter generated documents by lifecycle and related format."""
+
+    format = django_filters.ModelChoiceFilter(
+        field_name='format',
+        queryset=DocumentFormat.objects.all(),
+    )
     status = django_filters.CharFilter(lookup_expr='exact')
     search = django_filters.CharFilter(field_name='document_number', lookup_expr='icontains')
     date_from = django_filters.DateFilter(field_name='generated_at', lookup_expr='date__gte')

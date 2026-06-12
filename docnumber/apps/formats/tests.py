@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from apps.formats.models import DocumentFormat, FormatSequence
+from apps.formats.models import DocumentFormat, FormatCategory, FormatSequence
 
 
 @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}})
@@ -75,6 +75,32 @@ class DocumentFormatApiTests(TestCase):
             ],
             created_by=self.user,
         )
+
+    def test_create_category_returns_wrapped_payload(self):
+        """Category creation returns the API envelope expected by the UI."""
+        response = self.client.post(
+            '/api/v1/categories/',
+            {'name': 'Finance', 'code': 'FINANCE'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['data']['name'], 'Finance')
+
+    def test_duplicate_category_code_has_actionable_message(self):
+        """Duplicate category codes explain which field must change."""
+        FormatCategory.objects.create(name='Finance', code='FINANCE')
+
+        response = self.client.post(
+            '/api/v1/categories/',
+            {'name': 'Finance Copy', 'code': 'FINANCE'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('code:', response.data['error']['message'])
+        self.assertIn('different name', response.data['error']['message'])
 
     def test_list_formats_does_not_collide_with_total_generated_property(self):
         """List endpoint must not annotate over the read-only model property."""

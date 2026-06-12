@@ -28,11 +28,32 @@ class FormatCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
+        """Return categories with the standard API response envelope."""
         queryset = self.get_queryset().annotate(
             format_count=Count('formats', filter=Q(formats__is_deleted=False))
         )
         serializer = self.get_serializer(queryset, many=True)
         return Response({'success': True, 'data': serializer.data})
+
+    def create(self, request, *args, **kwargs):
+        """Create a category and wrap the 201 response payload."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return self._success_response(serializer.data, status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Update a category and keep the response shape consistent."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return self._success_response(serializer.data)
+
+    def _success_response(self, data, response_status=status.HTTP_200_OK):
+        """Build the success envelope shared by category writes."""
+        return Response({'success': True, 'data': data}, status=response_status)
 
 
 class DocumentFormatViewSet(viewsets.ModelViewSet):
@@ -62,6 +83,7 @@ class DocumentFormatViewSet(viewsets.ModelViewSet):
         return Response({'success': True, 'data': serializer.data})
 
     def create(self, request, *args, **kwargs):
+        """Create a category and wrap the 201 response payload."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -71,6 +93,7 @@ class DocumentFormatViewSet(viewsets.ModelViewSet):
         )
 
     def update(self, request, *args, **kwargs):
+        """Update a category and keep the response shape consistent."""
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)

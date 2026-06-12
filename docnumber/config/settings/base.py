@@ -110,6 +110,8 @@ REST_FRAMEWORK = {
         'anon': '100/hour',
         'user': '10000/hour',
         'generate': '1000/minute',
+        'token_obtain': '20/minute',
+        'token_refresh': '30/minute',
     },
     'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
 }

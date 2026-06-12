@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.core.auth_urls import ScopedTokenObtainPairView, ScopedTokenRefreshView
+
 
 class CurrentUserApiTests(TestCase):
     """Tests for authenticated profile retrieval and self-service updates."""
@@ -40,3 +42,12 @@ class CurrentUserApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('email', response.data['error']['details'])
+
+
+class AuthenticationThrottleScopeTests(TestCase):
+    """Tests for independent authentication endpoint throttling scopes."""
+
+    def test_token_views_use_isolated_throttle_scopes(self):
+        """Login and refresh attempts do not consume the same throttle bucket."""
+        self.assertEqual(ScopedTokenObtainPairView.throttle_classes[0].scope, 'token_obtain')
+        self.assertEqual(ScopedTokenRefreshView.throttle_classes[0].scope, 'token_refresh')

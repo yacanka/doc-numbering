@@ -87,7 +87,7 @@ class GeneratedDocumentApiTests(TestCase):
             generated_at=timezone.now(),
         )
 
-        response = self.client.get('/api/v1/documents/', {'format': str(self.document_format.id)})
+        response = self.client.get('/api/v1/documents/', {'format_id': str(self.document_format.id)})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['pagination']['count'], 1)

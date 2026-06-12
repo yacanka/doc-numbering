@@ -68,7 +68,7 @@ function buildFilters(): DocumentFilters {
     page: pagination.value.page,
     page_size: pagination.value.pageSize,
     search: searchQuery.value || undefined,
-    format: formatFilter.value || undefined,
+    format_id: formatFilter.value || undefined,
     status: statusFilter.value === 'all' ? undefined : statusFilter.value,
   }
 }

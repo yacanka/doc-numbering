@@ -1,16 +1,12 @@
 # apps/documents/filters.py
 import django_filters
-from apps.formats.models import DocumentFormat
 from .models import GeneratedDocument
 
 
 class GeneratedDocumentFilter(django_filters.FilterSet):
-    """Filter generated documents by lifecycle and related format."""
+    """Filter generated documents without using DRF reserved query names."""
 
-    format = django_filters.ModelChoiceFilter(
-        field_name='format',
-        queryset=DocumentFormat.objects.all(),
-    )
+    format_id = django_filters.UUIDFilter(field_name='format_id')
     status = django_filters.CharFilter(lookup_expr='exact')
     search = django_filters.CharFilter(field_name='document_number', lookup_expr='icontains')
     date_from = django_filters.DateFilter(field_name='generated_at', lookup_expr='date__gte')
@@ -19,4 +15,4 @@ class GeneratedDocumentFilter(django_filters.FilterSet):
 
     class Meta:
         model = GeneratedDocument
-        fields = ['format', 'status', 'generated_by']
+        fields = ['format_id', 'status', 'generated_by']

@@ -1,6 +1,6 @@
 // src/api/authRefreshPolicy.ts
 
-const AUTHENTICATION_ENDPOINTS = ['/auth/token/', '/auth/token/refresh/']
+const AUTHENTICATION_ENDPOINTS = ['/auth/token/', '/auth/token/refresh/', '/auth/logout/']
 
 export type RetriableRequest = {
   url?: string

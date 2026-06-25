@@ -60,17 +60,16 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
-  if (!to.meta.public && !authStore.isAuthenticated) {
-    return { name: 'Login', query: { redirect: to.fullPath } }
-  }
-
-  if (authStore.isAuthenticated && !authStore.user) {
+  if (!authStore.user) {
     try {
       await authStore.fetchUser()
     } catch {
-      authStore.logout()
-      return { name: 'Login' }
+      if (!to.meta.public) return { name: 'Login', query: { redirect: to.fullPath } }
     }
+  }
+
+  if (!to.meta.public && !authStore.isAuthenticated) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
   }
 })
 

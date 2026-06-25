@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 from decouple import Csv, config
@@ -9,6 +10,20 @@ LOG_DIR.mkdir(exist_ok=True)
 SECRET_KEY = config('SECRET_KEY', default='unsafe-dev-only-change-me')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+
+AUTH_ACCESS_COOKIE_NAME = config('AUTH_ACCESS_COOKIE_NAME', default='dn_access')
+AUTH_REFRESH_COOKIE_NAME = config('AUTH_REFRESH_COOKIE_NAME', default='dn_refresh')
+AUTH_COOKIE_NAMES = (AUTH_ACCESS_COOKIE_NAME, AUTH_REFRESH_COOKIE_NAME)
+AUTH_COOKIE_PATH = config('AUTH_COOKIE_PATH', default='/api/v1')
+AUTH_COOKIE_SECURE = config('AUTH_COOKIE_SECURE', default=not DEBUG, cast=bool)
+AUTH_COOKIE_SAMESITE = config('AUTH_COOKIE_SAMESITE', default='Lax')
+AUTH_ACCESS_COOKIE_MAX_AGE = config('AUTH_ACCESS_COOKIE_MAX_AGE', default=300, cast=int)
+AUTH_REFRESH_COOKIE_MAX_AGE = config('AUTH_REFRESH_COOKIE_MAX_AGE', default=60 * 60 * 24, cast=int)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = AUTH_COOKIE_SAMESITE
+CSRF_COOKIE_SECURE = AUTH_COOKIE_SECURE
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -87,9 +102,15 @@ CACHES = {
     }
 }
 
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(seconds=AUTH_ACCESS_COOKIE_MAX_AGE),
+    'REFRESH_TOKEN_LIFETIME': timedelta(seconds=AUTH_REFRESH_COOKIE_MAX_AGE),
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.core.authentication.CookieJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

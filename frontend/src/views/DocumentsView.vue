@@ -59,7 +59,7 @@ watch([searchQuery, statusFilter, formatFilter], () => {
 })
 
 function syncFiltersFromRoute() {
-  const format = route.query.format
+  const format = route.query.format_id
   formatFilter.value = typeof format === 'string' ? format : null
 }
 

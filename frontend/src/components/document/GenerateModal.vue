@@ -91,7 +91,7 @@ function downloadCSV() {
 
 function openDocumentsPage() {
   emit('update:show', false)
-  router.push({ path: '/documents', query: { format: props.format.id } })
+  router.push({ path: '/documents', query: { format_id: props.format.id } })
 }
 
 function handleClose() {

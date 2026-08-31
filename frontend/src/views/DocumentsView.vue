@@ -1,6 +1,6 @@
 <!-- src/views/DocumentsView.vue -->
 <script setup lang="ts">
-import { computed, h, onMounted, ref, watch } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   NButton, NCard, NDataTable, NInput, NSelect, NSpace,
@@ -13,14 +13,17 @@ import type { GeneratedDocument } from '@/types'
 const route = useRoute()
 const message = useMessage()
 const formatsStore = useFormatsStore()
+const SEARCH_DEBOUNCE_MS = 300
 
 const documents = ref<GeneratedDocument[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('all')
-const formatFilter = ref<string | null>(null)
+const formatFilter = ref<string | null>(normalizeFormatId(route.query.format_id))
 const updatingStatusIds = ref<string[]>([])
 const pagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
+let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
+let latestFetchId = 0
 
 const documentStatusOptions = [
   { label: 'Aktif', value: 'active' },
@@ -49,18 +52,37 @@ const columns: DataTableColumns<GeneratedDocument> = [
 
 onMounted(async () => {
   await formatsStore.fetchFormats()
-  syncFiltersFromRoute()
   await fetchDocuments()
 })
 
-watch([searchQuery, statusFilter, formatFilter], () => {
+watch(searchQuery, () => {
+  pagination.value.page = 1
+  clearSearchDebounce()
+  searchDebounceTimer = setTimeout(fetchDocuments, SEARCH_DEBOUNCE_MS)
+})
+
+watch([statusFilter, formatFilter], () => {
   pagination.value.page = 1
   fetchDocuments()
 })
 
-function syncFiltersFromRoute() {
-  const format = route.query.format_id
-  formatFilter.value = typeof format === 'string' ? format : null
+watch(() => route.query.format_id, (formatId) => {
+  formatFilter.value = normalizeFormatId(formatId)
+})
+
+onBeforeUnmount(() => {
+  clearSearchDebounce()
+  latestFetchId += 1
+})
+
+function normalizeFormatId(formatId: unknown) {
+  return typeof formatId === 'string' ? formatId : null
+}
+
+function clearSearchDebounce() {
+  if (searchDebounceTimer === undefined) return
+  clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = undefined
 }
 
 function buildFilters(): DocumentFilters {
@@ -74,15 +96,19 @@ function buildFilters(): DocumentFilters {
 }
 
 async function fetchDocuments() {
+  clearSearchDebounce()
+  const fetchId = ++latestFetchId
   loading.value = true
   try {
     const response = await documentsApi.getDocuments(buildFilters())
+    if (fetchId !== latestFetchId) return
     documents.value = response.data.data
     pagination.value.itemCount = response.data.pagination.count
   } catch (err: any) {
+    if (fetchId !== latestFetchId) return
     message.error(err.response?.data?.error?.message || 'Belge numaraları alınamadı')
   } finally {
-    loading.value = false
+    if (fetchId === latestFetchId) loading.value = false
   }
 }
 

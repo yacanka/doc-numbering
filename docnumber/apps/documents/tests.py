@@ -91,7 +91,26 @@ class GeneratedDocumentApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['pagination']['count'], 1)
-        self.assertEqual(response.data['data'][0]['format'], str(self.document_format.id))
+        self.assertEqual(
+            response.data['data'][0]['document_number'],
+            self.document.document_number,
+        )
+
+    def test_list_filters_documents_by_number(self):
+        """Document number search is case-insensitive and returns only matches."""
+        GeneratedDocument.objects.create(
+            format=self.document_format,
+            document_number='API-20',
+            sequence_value=20,
+            generated_by=self.user,
+            generated_at=timezone.now(),
+        )
+
+        response = self.client.get('/api/v1/documents/', {'search': 'api-1'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['pagination']['count'], 1)
+        self.assertEqual(response.data['data'][0]['document_number'], 'API-1')
 
     def test_update_status_marks_document_used(self):
         """Status endpoint updates status and usage timestamp."""

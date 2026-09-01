@@ -1,5 +1,6 @@
 # apps/formats/serializers.py
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import DocumentFormat, FormatCategory, FormatSequence, FormatVersion
 from .engine.segments import SEGMENT_REGISTRY, SegmentConfig, get_segment_class
 
@@ -82,12 +83,14 @@ class DocumentFormatDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_preview(self, obj):
         try:
             return obj.generate_preview()
         except Exception:
             return None
 
+    @extend_schema_field(serializers.IntegerField())
     def get_current_sequence(self, obj):
         from django.utils import timezone
         from .engine.generator import DocumentNumberGenerator

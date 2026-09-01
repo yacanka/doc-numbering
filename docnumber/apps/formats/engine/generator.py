@@ -31,10 +31,18 @@ class DocumentNumberGenerator:
         context_data: Optional[Dict[str, Any]] = None,
         user=None,
         metadata: Optional[Dict[str, Any]] = None,
+        source_credential=None,
+        external_reference: str = '',
     ) -> 'GeneratedDocument':
         """Generate and persist one unique document number."""
         with self._generation_lock():
-            return self._generate_with_retries(context_data, user, metadata)
+            return self._generate_with_retries(
+                context_data,
+                user,
+                metadata,
+                source_credential,
+                external_reference,
+            )
 
     def preview(self, context_data: Optional[Dict[str, Any]] = None) -> str:
         """Render a non-persistent preview using the sequence start value."""
@@ -93,16 +101,36 @@ class DocumentNumberGenerator:
         with lock:
             yield
 
-    def _generate_with_retries(self, context_data, user, metadata):
+    def _generate_with_retries(
+        self,
+        context_data,
+        user,
+        metadata,
+        source_credential,
+        external_reference,
+    ):
         for attempt in range(self.MAX_DUPLICATE_RETRIES):
             try:
-                return self._generate_internal(context_data, user, metadata)
+                return self._generate_internal(
+                    context_data,
+                    user,
+                    metadata,
+                    source_credential,
+                    external_reference,
+                )
             except IntegrityError:
                 logger.warning('Duplicate document number retry=%s', attempt + 1)
         raise RuntimeError('Could not generate a unique document number')
 
     @transaction.atomic
-    def _generate_internal(self, context_data, user, metadata):
+    def _generate_internal(
+        self,
+        context_data,
+        user,
+        metadata,
+        source_credential,
+        external_reference,
+    ):
         from apps.documents.models import GeneratedDocument
 
         now = timezone.now()
@@ -118,6 +146,8 @@ class DocumentNumberGenerator:
             generated_by=user,
             generated_at=now,
             metadata=metadata or {},
+            source_credential=source_credential,
+            external_reference=external_reference,
         )
 
     def _build_context(self, now, sequence_value, context_data=None, user=None) -> Dict[str, Any]:

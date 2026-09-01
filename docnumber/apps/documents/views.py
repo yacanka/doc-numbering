@@ -16,6 +16,7 @@ from .serializers import (
 )
 from .filters import GeneratedDocumentFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ class GeneratedDocumentViewSet(viewsets.ReadOnlyModelViewSet):
         data = self.get_serializer(doc).data
         return Response({'success': True, 'data': data})
 
+    @extend_schema(parameters=[OpenApiParameter('number', str, OpenApiParameter.PATH)])
     @action(detail=False, methods=['get'], url_path='validate/(?P<number>[^/.]+)')
     def validate_number(self, request, number=None):
         """Validate if a document number exists and is active"""

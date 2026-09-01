@@ -17,6 +17,7 @@ class GeneratedDocumentSerializer(serializers.ModelSerializer):
             'id', 'document_number', 'format', 'format_code', 'format_name',
             'status', 'sequence_value',
             'context_data', 'metadata',
+            'external_reference',
             'generated_by', 'generated_by_username',
             'generated_at', 'used_at', 'cancelled_at', 'cancellation_reason',
         ]

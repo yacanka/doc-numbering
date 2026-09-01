@@ -85,6 +85,7 @@ export interface GeneratedDocument {
   sequence_value: number
   context_data: Record<string, any>
   metadata: Record<string, any>
+  external_reference: string
   generated_by: number
   generated_by_username: string
   generated_at: string

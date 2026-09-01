@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from drf_spectacular.utils import extend_schema, extend_schema_field
 
 from apps.core.throttles import TokenObtainRateThrottle, TokenRefreshRateThrottle
 
@@ -29,6 +30,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'last_name': {'required': False, 'allow_blank': True},
         }
 
+    @extend_schema_field(serializers.CharField())
     def get_username(self, user):
         """Return the configured username identifier for the user model."""
         return user.get_username()
@@ -39,6 +41,12 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         if not normalized_email:
             raise serializers.ValidationError('Email address is required.')
         return normalized_email
+
+
+class AuthSuccessSerializer(serializers.Serializer):
+    """Document cookie-auth endpoint responses without exposing JWT values."""
+
+    success = serializers.BooleanField()
 
 
 def cookie_settings(max_age):
@@ -87,6 +95,7 @@ class CsrfTokenView(APIView):
     permission_classes = [AllowAny]
 
     @method_decorator(ensure_csrf_cookie)
+    @extend_schema(responses=AuthSuccessSerializer)
     def get(self, request):
         """Return a success envelope while Django sets the CSRF cookie."""
         get_token(request)
@@ -100,6 +109,7 @@ class CookieTokenObtainPairView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [TokenObtainRateThrottle]
 
+    @extend_schema(request=TokenObtainPairSerializer, responses=AuthSuccessSerializer)
     def post(self, request):
         """Validate credentials and set access and refresh cookies."""
         enforce_csrf(request)
@@ -117,6 +127,7 @@ class CookieTokenRefreshView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [TokenRefreshRateThrottle]
 
+    @extend_schema(request=None, responses=AuthSuccessSerializer)
     def post(self, request):
         """Refresh the access token without exposing tokens to JavaScript."""
         enforce_csrf(request)
@@ -139,6 +150,7 @@ class LogoutView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    @extend_schema(request=None, responses=AuthSuccessSerializer)
     def post(self, request):
         """Logout the user by deleting access and refresh cookies."""
         enforce_csrf(request)
@@ -152,10 +164,12 @@ class CurrentUserView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses=CurrentUserSerializer)
     def get(self, request):
         """Return identity fields needed by the frontend."""
         return Response({'success': True, 'data': CurrentUserSerializer(request.user).data})
 
+    @extend_schema(request=CurrentUserSerializer, responses=CurrentUserSerializer)
     def patch(self, request):
         """Update editable profile fields without allowing username changes."""
         serializer = CurrentUserSerializer(request.user, data=request.data, partial=True)

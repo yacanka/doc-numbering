@@ -10,4 +10,6 @@ urlpatterns = [
     path('api/v1/', include('apps.formats.urls')),
     path('api/v1/', include('apps.documents.urls')),
     path('api/v1/auth/', include('apps.core.auth_urls')),
+    path('api/v1/integrations/', include('apps.integrations.urls')),
+    path('api/private/v1/', include('apps.integrations.private_urls')),
 ]

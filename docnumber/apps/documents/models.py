@@ -27,6 +27,7 @@ class GeneratedDocument(models.Model):
     # Context and metadata
     context_data = models.JSONField(default=dict)
     metadata = models.JSONField(default=dict)
+    external_reference = models.CharField(max_length=200, blank=True, db_index=True)
 
     # Generation info
     generated_by = models.ForeignKey(
@@ -34,6 +35,13 @@ class GeneratedDocument(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         related_name='generated_documents'
+    )
+    source_credential = models.ForeignKey(
+        'integrations.ApiCredential',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_documents',
     )
     generated_at = models.DateTimeField()
 
@@ -47,9 +55,18 @@ class GeneratedDocument(models.Model):
         verbose_name = 'Generated Document'
         verbose_name_plural = 'Generated Documents'
         indexes = [
-            models.Index(fields=['format', 'generated_at']),
-            models.Index(fields=['status', 'generated_at']),
-            models.Index(fields=['document_number']),
+            models.Index(
+                fields=['format', 'generated_at'],
+                name='documents_g_format_75a5e9_idx',
+            ),
+            models.Index(
+                fields=['status', 'generated_at'],
+                name='documents_g_status_613c1e_idx',
+            ),
+            models.Index(
+                fields=['document_number'],
+                name='documents_g_documen_cfa8b0_idx',
+            ),
         ]
 
     def __str__(self):

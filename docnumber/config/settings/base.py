@@ -47,6 +47,7 @@ LOCAL_APPS = [
     'apps.core',
     'apps.formats',
     'apps.documents',
+    'apps.integrations',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -131,6 +132,8 @@ REST_FRAMEWORK = {
         'anon': '100/hour',
         'user': '10000/hour',
         'generate': '1000/minute',
+        'private_api': '5000/hour',
+        'private_generate': '1000/minute',
         'token_obtain': '20/minute',
         'token_refresh': '30/minute',
     },
@@ -138,10 +141,15 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'DocNumber API',
-    'DESCRIPTION': 'Unique Document Number Generation System',
+    'TITLE': 'Numarator API',
+    'DESCRIPTION': 'Belge numarası üretim ve entegrasyon API\'si',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'ENUM_NAME_OVERRIDES': {
+        'FormatStatusEnum': 'apps.formats.models.DocumentFormat.STATUS_CHOICES',
+        'DocumentStatusEnum': 'apps.documents.models.GeneratedDocument.STATUS_CHOICES',
+        'PrivateNumberStatusEnum': ['used', 'cancelled'],
+    },
 }
 
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='memory://')
